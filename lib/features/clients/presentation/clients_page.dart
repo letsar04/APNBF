@@ -81,7 +81,7 @@ class _ClientDialogState extends State<_ClientDialog> {
       TextFormField(controller:address, decoration:const InputDecoration(labelText:'Adresse / zone')),
       TextFormField(controller:notes, decoration:const InputDecoration(labelText:'Notes')),
     ]))),
-    actions:[TextButton(onPressed:loading?null:()=>Navigator.pop(context),child:const Text('Annuler')),FilledButton(onPressed:loading?null() async {
+    actions:[TextButton(onPressed:loading?null:()=>Navigator.pop(context),child:const Text('Annuler')),FilledButton(onPressed:loading ? null : () async {
       if(!form.currentState!.validate()) return; setState(()=>loading=true);
       try { await repo.save(id:widget.client?['id'],fullName:name.text,phone:phone.text,whatsapp:whatsapp.text,email:email.text,address:address.text,notes:notes.text); if(context.mounted) Navigator.pop(context,true); }
       catch(e){if(context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Erreur : $e')));}

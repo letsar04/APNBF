@@ -28,6 +28,9 @@ jobs:
       - name: Generate Android platform files
         run: flutter create --platforms=android --project-name apnbf .
 
+      - name: Patch Android manifest
+        run: bash tool/patch_android.sh
+
       - name: Install dependencies
         run: flutter pub get
 

@@ -41,7 +41,37 @@ class _ClientsPageState extends State<ClientsPage> {
                 leading: const CircleAvatar(child: Icon(Icons.person_outline)),
                 title: Text(c['full_name'] ?? ''),
                 subtitle: Text(c['phone']?.toString().isNotEmpty == true ? c['phone'] : 'Aucun téléphone'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: PopupMenuButton<String>(
+                  onSelected: (action) async {
+                    if (action == 'edit') {
+                      await edit(c);
+                    } else if (action == 'delete') {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Supprimer ce client ?'),
+                          content: const Text('Cette action est définitive.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+                            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer')),
+                          ],
+                        ),
+                      );
+                      if (ok == true) {
+                        try {
+                          await repo.delete(c['id']);
+                          refresh();
+                        } catch (e) {
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Impossible : $e')));
+                        }
+                      }
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Modifier')),
+                    PopupMenuItem(value: 'delete', child: Text('Supprimer')),
+                  ],
+                ),
                 onTap: () => context.push('/clients/${c['id']}'),
               ));
             },

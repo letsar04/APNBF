@@ -38,6 +38,7 @@ class _DashboardPageState extends State<DashboardPage>{
           _Action('Produits',Icons.inventory_2_outlined,()=>context.push('/products')),
           _Action('Services',Icons.handyman_outlined,()=>context.push('/services')),
           _Action('Commandes',Icons.receipt_long_outlined,()=>context.push('/orders')),
+          _Action('Précommandes',Icons.bookmark_border,()=>context.push('/preorders')),
         ]),const SizedBox(height:10),_section('Argent',[
           _Action('Trésorerie',Icons.account_balance_wallet_outlined,()=>context.push('/finance')),
         ])

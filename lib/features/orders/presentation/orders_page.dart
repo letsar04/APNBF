@@ -2,7 +2,225 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/session/app_session.dart';
 
-class OrdersPage extends StatefulWidget{const OrdersPage({super.key});@override State<OrdersPage> createState()=>_OrdersPageState();}
-class _OrdersPageState extends State<OrdersPage>{late Future<List<Map<String,dynamic>>> future;final db=Supabase.instance.client;@override void initState(){super.initState();future=_list();}Future<List<Map<String,dynamic>>> _list()async{final id=await AppSession().businessId();final x=await db.from('orders').select('id,total_amount,paid_amount,status,order_type,created_at,clients(full_name)').eq('business_id',id).order('created_at',ascending:false);return List<Map<String,dynamic>>.from(x);}void refresh()=>setState(()=>future=_list());Future<void> add()async{final ok=await showDialog<bool>(context:context,builder:(_)=>const _OrderDialog());if(ok==true)refresh();}@override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('Commandes'),actions:[IconButton(onPressed:add,icon:const Icon(Icons.add))]),body:FutureBuilder<List<Map<String,dynamic>>>(future:future,builder:(c,s){if(!s.hasData)return const Center(child:CircularProgressIndicator());final list=s.data!;if(list.isEmpty)return const Center(child:Text('Aucune commande.'));return ListView.builder(itemCount:list.length,itemBuilder:(_,i){final x=list[i];final cl=x['clients'] as Map?;return Card(child:ListTile(leading:const Icon(Icons.receipt_long_outlined),title:Text(cl?['full_name']?.toString()??'Client'),subtitle:Text('${x['total_amount']} F • payé ${x['paid_amount']} F'),trailing:Text(x['status']??'')));});}),floatingActionButton:FloatingActionButton.extended(onPressed:add,icon:const Icon(Icons.add),label:const Text('Commande')));}
-class _OrderDialog extends StatefulWidget{const _OrderDialog();@override State<_OrderDialog> createState()=>_OrderDialogState();}
-class _OrderDialogState extends State<_OrderDialog>{final db=Supabase.instance.client;List<Map<String,dynamic>> clients=[];String? clientId;final total=TextEditingController(),paid=TextEditingController(),notes=TextEditingController();String type='product';bool loading=true;@override void initState(){super.initState();_load();}Future<void> _load()async{final id=await AppSession().businessId();final x=await db.from('clients').select('id,full_name').eq('business_id',id).order('full_name');if(mounted)setState((){clients=List<Map<String,dynamic>>.from(x);loading=false;});}@override void dispose(){total.dispose();paid.dispose();notes.dispose();super.dispose();}@override Widget build(BuildContext c){if(loading)return const AlertDialog(content:CircularProgressIndicator());return AlertDialog(title:const Text('Nouvelle commande'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[DropdownButtonFormField<String>(value:clientId,decoration:const InputDecoration(labelText:'Client'),items:clients.map((x)=>DropdownMenuItem(value:x['id'].toString(),child:Text(x['full_name']))).toList(),onChanged:(v){setState(()=>clientId=v);}),DropdownButtonFormField(value:type,items:const[DropdownMenuItem(value:'product',child:Text('Produit')),DropdownMenuItem(value:'service',child:Text('Service')),DropdownMenuItem(value:'mixed',child:Text('Mixte'))],onChanged:(v){if(v!=null)setState(()=>type=v);}),TextField(controller:total,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Montant total (F)')),TextField(controller:paid,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Déjà payé (F)')),TextField(controller:notes,decoration:const InputDecoration(labelText:'Note'))])),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Annuler')),FilledButton(onPressed:clientId==null?null:()async{final t=double.tryParse(total.text)??0,p=double.tryParse(paid.text)??0;if(t<=0||p<0||p>t)return;final bid=await AppSession().businessId();final order=await db.from('orders').insert({'business_id':bid,'client_id':clientId,'order_type':type,'total_amount':t,'paid_amount':p,'status':'confirmed','notes':notes.text.trim()}).select('id').single();if(p>0)await db.from('transactions').insert({'business_id':bid,'type':'income','amount':p,'category':'Paiement commande','reference_type':'order','reference_id':order['id']});if(p<t)await db.from('credits').insert({'business_id':bid,'client_id':clientId,'order_id':order['id'],'original_amount':t,'paid_amount':p,'status':p==0?'active':'partially_paid'});if(c.mounted)Navigator.pop(c,true);},child:const Text('Créer'))]));}
+class OrdersPage extends StatefulWidget {
+  const OrdersPage({super.key});
+  @override
+  State<OrdersPage> createState() => _OrdersPageState();
+}
+
+class _OrdersPageState extends State<OrdersPage> {
+  late Future<List<Map<String, dynamic>>> future;
+  final db = Supabase.instance.client;
+  @override
+  void initState() {
+    super.initState();
+    future = _list();
+  }
+
+  Future<List<Map<String, dynamic>>> _list() async {
+    final id = await AppSession().businessId();
+    final x = await db
+        .from('orders')
+        .select(
+          'id,total_amount,paid_amount,status,order_type,created_at,clients(full_name)',
+        )
+        .eq('business_id', id)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(x);
+  }
+
+  void refresh() => setState(() => future = _list());
+  Future<void> add() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _OrderDialog(),
+    );
+    if (ok == true) refresh();
+  }
+
+  @override
+  Widget build(BuildContext c) => Scaffold(
+    appBar: AppBar(
+      title: const Text('Commandes'),
+      actions: [IconButton(onPressed: add, icon: const Icon(Icons.add))],
+    ),
+    body: FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (c, s) {
+        if (!s.hasData) return const Center(child: CircularProgressIndicator());
+        final list = s.data!;
+        if (list.isEmpty) return const Center(child: Text('Aucune commande.'));
+        return ListView.builder(
+          itemCount: list.length,
+          itemBuilder: (_, i) {
+            final x = list[i];
+            final cl = x['clients'] as Map?;
+            return Card(
+              child: ListTile(
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(cl?['full_name']?.toString() ?? 'Client'),
+                subtitle: Text(
+                  '${x['total_amount']} F • payé ${x['paid_amount']} F',
+                ),
+                trailing: Text(x['status'] ?? ''),
+              ),
+            );
+          },
+        );
+      },
+    ),
+    floatingActionButton: FloatingActionButton.extended(
+      onPressed: add,
+      icon: const Icon(Icons.add),
+      label: const Text('Commande'),
+    ),
+  );
+}
+
+class _OrderDialog extends StatefulWidget {
+  const _OrderDialog();
+  @override
+  State<_OrderDialog> createState() => _OrderDialogState();
+}
+
+class _OrderDialogState extends State<_OrderDialog> {
+  final db = Supabase.instance.client;
+  List<Map<String, dynamic>> clients = [];
+  String? clientId;
+  final total = TextEditingController(),
+      paid = TextEditingController(),
+      notes = TextEditingController();
+  String type = 'product';
+  bool loading = true;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final id = await AppSession().businessId();
+    final x = await db
+        .from('clients')
+        .select('id,full_name')
+        .eq('business_id', id)
+        .order('full_name');
+    if (mounted)
+      setState(() {
+        clients = List<Map<String, dynamic>>.from(x);
+        loading = false;
+      });
+  }
+
+  @override
+  void dispose() {
+    total.dispose();
+    paid.dispose();
+    notes.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext c) {
+    if (loading) return const AlertDialog(content: CircularProgressIndicator());
+    return AlertDialog(
+      title: const Text('Nouvelle commande'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: clientId,
+              decoration: const InputDecoration(labelText: 'Client'),
+              items: clients
+                  .map(
+                    (x) => DropdownMenuItem(
+                      value: x['id'].toString(),
+                      child: Text(x['full_name']),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                setState(() => clientId = v);
+              },
+            ),
+            DropdownButtonFormField(
+              value: type,
+              items: const [
+                DropdownMenuItem(value: 'product', child: Text('Produit')),
+                DropdownMenuItem(value: 'service', child: Text('Service')),
+                DropdownMenuItem(value: 'mixed', child: Text('Mixte')),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => type = v);
+              },
+            ),
+            TextField(
+              controller: total,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Montant total (F)'),
+            ),
+            TextField(
+              controller: paid,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Déjà payé (F)'),
+            ),
+            TextField(
+              controller: notes,
+              decoration: const InputDecoration(labelText: 'Note'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(c),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: clientId == null
+              ? null
+              : () async {
+                  final t = double.tryParse(total.text) ?? 0,
+                      p = double.tryParse(paid.text) ?? 0;
+                  if (t <= 0 || p < 0 || p > t) return;
+                  final bid = await AppSession().businessId();
+                  final order = await db
+                      .from('orders')
+                      .insert({
+                        'business_id': bid,
+                        'client_id': clientId,
+                        'order_type': type,
+                        'total_amount': t,
+                        'paid_amount': p,
+                        'status': 'confirmed',
+                        'notes': notes.text.trim(),
+                      })
+                      .select('id')
+                      .single();
+                  if (p > 0)
+                    await db.from('transactions').insert({
+                      'business_id': bid,
+                      'type': 'income',
+                      'amount': p,
+                      'category': 'Paiement commande',
+                      'reference_type': 'order',
+                      'reference_id': order['id'],
+                    });
+                  if (p < t)
+                    await db.from('credits').insert({
+                      'business_id': bid,
+                      'client_id': clientId,
+                      'order_id': order['id'],
+                      'original_amount': t,
+                      'paid_amount': p,
+                      'status': p == 0 ? 'active' : 'partially_paid',
+                    });
+                  if (c.mounted) Navigator.pop(c, true);
+                },
+          child: const Text('Créer'),
+        ),
+      ],
+    );
+  }
+}

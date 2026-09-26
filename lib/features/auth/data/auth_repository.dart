@@ -76,6 +76,7 @@ class AuthRepository {
           'whatsapp': whatsapp.trim(),
           'address': address.trim(),
           'currency': 'XOF',
+          'created_by': user.id,
         })
         .select('id')
         .single();

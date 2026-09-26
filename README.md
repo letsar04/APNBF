@@ -6,8 +6,10 @@ Application mobile de gestion commerciale pour un artisan/commerçant : maçonne
 
 - Tableau de bord activité
 - Clients, fiches et crédits
+- Recouvrement des crédits avec appel / WhatsApp
 - Commandes et précommandes
 - Produits et services avec photos
+- Modification et archivage des produits/services
 - Trésorerie : entrées, sorties et solde
 - Relances par appel et WhatsApp
 - Espace client public dans l'application
@@ -15,7 +17,9 @@ Application mobile de gestion commerciale pour un artisan/commerçant : maçonne
 - QR de téléchargement de l'APK
 - QR personnel pour ouvrir la vitrine client
 - Identité visuelle APNBF
+- Favicon et thumbnail de marque
 - Stockage média Supabase sécurisé par entreprise
+- Deep link Android `apnbf://client-space/<businessId>`
 
 ## Stack
 
@@ -49,7 +53,11 @@ Ne jamais mettre une service-role key dans l'application mobile.
 Le module **QR & partage** génère :
 
 1. un QR de téléchargement de l'APK Android depuis les releases GitHub ;
-2. un QR privé permettant d'ouvrir la vitrine client de l'entreprise dans APNBF.
+2. un QR permettant d'ouvrir la vitrine client de l'entreprise dans APNBF.
+
+Le workflow `.github/workflows/android-release.yml` génère automatiquement l'APK à partir d'un tag `v*.*.*` et le publie dans une GitHub Release. Il génère les plateformes Android si elles ne sont pas encore versionnées et applique le manifeste APNBF via `tool/patch_android.sh`.
+
+Avant la première release, ajouter le secret GitHub `SUPABASE_PUBLISHABLE_KEY` dans **Settings → Secrets and variables → Actions**. L'URL Supabase est publique et est déjà définie dans le workflow.
 
 Quand APNBF sera publié sur Google Play, le lien de téléchargement pourra être remplacé par la fiche officielle.
 
@@ -59,6 +67,17 @@ Quand APNBF sera publié sur Google Play, le lien de téléchargement pourra êt
 - `assets/brand/apnbf_icon.svg` : icône de marque
 - `web/favicon.svg` : favicon
 - `web/thumbnail.svg` : miniature sociale / future landing page
+
+## Release locale
+
+```bash
+flutter clean
+flutter pub get
+flutter analyze
+flutter build apk --release --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+```
+
+L'APK se trouve ensuite dans `build/app/outputs/flutter-apk/app-release.apk`.
 
 ## Roadmap
 

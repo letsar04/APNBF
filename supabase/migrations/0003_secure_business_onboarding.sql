@@ -36,3 +36,16 @@ with check (
       and me.role in ('owner','admin')
   )
 );
+
+
+-- The creator must be able to read the business returned by the onboarding insert before membership exists.
+drop policy if exists businesses_select on public.businesses;
+create policy businesses_select on public.businesses
+for select to authenticated
+using (public.is_business_member(id) or created_by = (select auth.uid()));
+
+drop policy if exists businesses_update on public.businesses;
+create policy businesses_update on public.businesses
+for update to authenticated
+using (public.is_business_member(id) or created_by = (select auth.uid()))
+with check (public.is_business_member(id) or created_by = (select auth.uid()));

@@ -39,7 +39,7 @@ class ClientsRepository {
     if (id == null) {
       await _client.from('clients').insert(payload);
     } else {
-      await _client.from('clients').update(payload)..eq('id', id);
+      await _client.from('clients').update(payload).eq('id', id);
     }
   }
 

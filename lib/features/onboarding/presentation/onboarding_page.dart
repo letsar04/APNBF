@@ -4,10 +4,32 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/brand/apnbf_logo.dart';
 import '../../auth/data/auth_repository.dart';
 
-class OnboardingPage extends StatefulWidget { const OnboardingPage({super.key}); @override State<OnboardingPage> createState()=>_OnboardingPageState(); }
-class _OnboardingPageState extends State<OnboardingPage>{
-  final _formKey=GlobalKey<FormState>();final _name=TextEditingController();final _phone=TextEditingController();final _whatsapp=TextEditingController();final _address=TextEditingController();final _repository=AuthRepository();bool _loading=false;String? _error;
-  @override void dispose(){_name.dispose();_phone.dispose();_whatsapp.dispose();_address.dispose();super.dispose();}
-  Future<void> _create()async{if(!_formKey.currentState!.validate())return;setState((){_loading=true;_error=null;});try{await _repository.createBusiness(name:_name.text,phone:_phone.text,whatsapp:_whatsapp.text,address:_address.text);if(!mounted)return;context.go('/dashboard');}on PostgrestException catch(e){if(mounted)setState(()=>_error=e.message);}catch(_){if(mounted)setState(()=>_error='Impossible de créer l’activité pour le moment.');}finally{if(mounted)setState(()=>_loading=false);}}
-  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Configurer mon activité')),body:SafeArea(child:SingleChildScrollView(padding:const EdgeInsets.all(24),child:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:520),child:Form(key:_formKey,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Center(child:ApnbfLogo(height:58)),const SizedBox(height:28),Text('Présentons ton activité',style:Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight:FontWeight.w800)),const SizedBox(height:8),const Text('Ces informations seront visibles par tes clients dans ta vitrine APNBF.'),const SizedBox(height:24),Card(child:Padding(padding:const EdgeInsets.all(18),child:Column(children:[TextFormField(controller:_name,decoration:const InputDecoration(labelText:'Nom de l’activité'),validator:(v)=>v==null||v.trim().isEmpty?'Nom requis':null),const SizedBox(height:12),TextFormField(controller:_phone,keyboardType:TextInputType.phone,decoration:const InputDecoration(labelText:'Téléphone professionnel'),validator:(v)=>v==null||v.trim().isEmpty?'Téléphone requis':null),const SizedBox(height:12),TextFormField(controller:_whatsapp,keyboardType:TextInputType.phone,decoration:const InputDecoration(labelText:'WhatsApp')),const SizedBox(height:12),TextFormField(controller:_address,maxLines:2,decoration:const InputDecoration(labelText:'Adresse / zone d’activité'))])),const SizedBox(height:16),if(_error!=null)...[Text(_error!,style:TextStyle(color:Theme.of(context).colorScheme.error)),const SizedBox(height:12)],SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:_loading?null:_create,icon:const Icon(Icons.storefront_outlined),label:Text(_loading?'Création...':'Créer mon activité')))]))))));
+class OnboardingPage extends StatefulWidget { const OnboardingPage({super.key}); @override State<OnboardingPage> createState() => _OnboardingPageState(); }
+class _OnboardingPageState extends State<OnboardingPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController(); final _phone = TextEditingController(); final _whatsapp = TextEditingController(); final _address = TextEditingController();
+  final _repository = AuthRepository(); bool _loading = false; String? _error;
+  @override void dispose() { _name.dispose(); _phone.dispose(); _whatsapp.dispose(); _address.dispose(); super.dispose(); }
+  Future<void> _create() async {
+    if (!_formKey.currentState!.validate()) return; setState(() { _loading = true; _error = null; });
+    try { await _repository.createBusiness(name: _name.text, phone: _phone.text, whatsapp: _whatsapp.text, address: _address.text); if (mounted) context.go('/dashboard'); }
+    on PostgrestException catch (e) { if (mounted) setState(() => _error = e.message); }
+    catch (_) { if (mounted) setState(() => _error = 'Impossible de créer l’activité pour le moment.'); }
+    finally { if (mounted) setState(() => _loading = false); }
+  }
+  @override Widget build(BuildContext context) {
+    return Scaffold(appBar: AppBar(title: const Text('Configurer mon activité')), body: SafeArea(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520), child: Form(key: _formKey, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Center(child: ApnbfLogo(height: 58)), const SizedBox(height: 28),
+      Text('Présentons ton activité', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)), const SizedBox(height: 8),
+      const Text('Ces informations seront visibles par tes clients dans ta vitrine APNBF.'), const SizedBox(height: 24),
+      Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(children: [
+        TextFormField(controller: _name, decoration: const InputDecoration(labelText: 'Nom de l’activité'), validator: (v) => v == null || v.trim().isEmpty ? 'Nom requis' : null),
+        const SizedBox(height: 12), TextFormField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Téléphone professionnel'), validator: (v) => v == null || v.trim().isEmpty ? 'Téléphone requis' : null),
+        const SizedBox(height: 12), TextFormField(controller: _whatsapp, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'WhatsApp')),
+        const SizedBox(height: 12), TextFormField(controller: _address, maxLines: 2, decoration: const InputDecoration(labelText: 'Adresse / zone d’activité')),
+      ])), const SizedBox(height: 16),
+      if (_error != null) ...[Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)), const SizedBox(height: 12)],
+      SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: _loading ? null : _create, icon: const Icon(Icons.storefront_outlined), label: Text(_loading ? 'Création...' : 'Créer mon activité'))),
+    ]))))));
+  }
 }

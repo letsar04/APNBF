@@ -9,6 +9,7 @@ import '../features/home/presentation/home_page.dart';
 import '../features/onboarding/presentation/onboarding_page.dart';
 import '../features/orders/presentation/orders_page.dart';
 import '../features/products/presentation/products_page.dart';
+import '../features/preorders/presentation/preorders_page.dart';
 import '../features/services/presentation/services_page.dart';
 
 final appRouter = GoRouter(
@@ -23,6 +24,7 @@ final appRouter = GoRouter(
     GoRoute(path: '/products', builder: (context, state) => const ProductsPage()),
     GoRoute(path: '/services', builder: (context, state) => const ServicesPage()),
     GoRoute(path: '/orders', builder: (context, state) => const OrdersPage()),
+    GoRoute(path: '/preorders', builder: (context, state) => const PreordersPage()),
     GoRoute(path: '/finance', builder: (context, state) => const FinancePage()),
   ],
 );

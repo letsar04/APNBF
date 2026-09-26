@@ -1,154 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/media/media_service.dart';
 import '../../../core/session/app_session.dart';
 
-class ServicesPage extends StatefulWidget {
-  const ServicesPage({super.key});
-  @override
-  State<ServicesPage> createState() => _ServicesPageState();
+class ServicesPage extends StatefulWidget{const ServicesPage({super.key});@override State<ServicesPage> createState()=>_ServicesPageState();}
+class _ServicesPageState extends State<ServicesPage>{late Future<List<Map<String,dynamic>>> future;final db=Supabase.instance.client;@override void initState(){super.initState();future=_list();}Future<List<Map<String,dynamic>>> _list()async{final id=await AppSession().businessId();final x=await db.from('services').select().eq('business_id',id).eq('is_active',true).order('name');return List<Map<String,dynamic>>.from(x);}void refresh()=>setState(()=>future=_list());Future<void> edit(Map<String,dynamic> s)async{final ok=await showDialog<bool>(context:context,builder:(_)=>_ServiceDialog(service:s));if(ok==true)refresh();}Future<void> remove(Map<String,dynamic> s)async{final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(title:const Text('Archiver le service ?'),content:Text('« ${s['name']} » ne sera plus visible dans la vitrine.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Archiver'))]));if(ok==true){await db.from('services').update({'is_active':false}).eq('id',s['id']);refresh();}}
+@override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('Services'),actions:[IconButton(onPressed:()=>showDialog<bool>(context:context,builder:(_)=>const _ServiceDialog()).then((v){if(v==true)refresh();}),icon:const Icon(Icons.add))]),body:FutureBuilder<List<Map<String,dynamic>>>(future:future,builder:(c,s){if(!s.hasData)return const Center(child:CircularProgressIndicator());final list=s.data!;if(list.isEmpty)return const Center(child:Text('Aucun service.'));return ListView.separated(padding:const EdgeInsets.all(16),itemCount:list.length,separatorBuilder:(_,__)=>const SizedBox(height:8),itemBuilder:(_,i){final x=list[i];final url=x['image_url']?.toString();return Card(child:ListTile(contentPadding:const EdgeInsets.all(10),leading:ClipRRect(borderRadius:BorderRadius.circular(10),child:url==null||url.isEmpty?Container(width:58,height:58,color:Theme.of(c).colorScheme.primaryContainer,child:const Icon(Icons.handyman_outlined)):Image.network(url,width:58,height:58,fit:BoxFit.cover)),title:Text(x['name']??'',style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(x['price_type']=='quote'?'Sur devis':'${x['base_price']} F'),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='edit')edit(x);if(v=='delete')remove(x);},itemBuilder:(_)=>const[PopupMenuItem(value:'edit',child:Text('Modifier')),PopupMenuItem(value:'delete',child:Text('Archiver'))]));});}),floatingActionButton:FloatingActionButton.extended(onPressed:()=>showDialog<bool>(context:context,builder:(_)=>const _ServiceDialog()).then((v){if(v==true)refresh();}),icon:const Icon(Icons.add),label:const Text('Service')));}
 }
-
-class _ServicesPageState extends State<ServicesPage> {
-  late Future<List<Map<String, dynamic>>> future;
-  final db = Supabase.instance.client;
-  @override
-  void initState() {
-    super.initState();
-    future = _list();
-  }
-
-  Future<List<Map<String, dynamic>>> _list() async {
-    final id = await AppSession().businessId();
-    final x = await db
-        .from('services')
-        .select()
-        .eq('business_id', id)
-        .eq('is_active', true)
-        .order('name');
-    return List<Map<String, dynamic>>.from(x);
-  }
-
-  void refresh() => setState(() => future = _list());
-  Future<void> add() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => const _ServiceDialog(),
-    );
-    if (ok == true) refresh();
-  }
-
-  @override
-  Widget build(BuildContext c) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Services'),
-      actions: [IconButton(onPressed: add, icon: const Icon(Icons.add))],
-    ),
-    body: FutureBuilder<List<Map<String, dynamic>>>(
-      future: future,
-      builder: (c, s) {
-        if (!s.hasData) return const Center(child: CircularProgressIndicator());
-        final list = s.data!;
-        if (list.isEmpty) return const Center(child: Text('Aucun service.'));
-        return ListView(
-          children: list
-              .map(
-                (x) => Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.handyman_outlined),
-                    title: Text(x['name']),
-                    subtitle: Text(
-                      x['price_type'] == 'quote'
-                          ? 'Sur devis'
-                          : 'À partir de ${x['base_price']} F',
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-        );
-      },
-    ),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: add,
-      icon: const Icon(Icons.add),
-      label: const Text('Service'),
-    ),
-  );
-}
-
-class _ServiceDialog extends StatefulWidget {
-  const _ServiceDialog();
-  @override
-  State<_ServiceDialog> createState() => _ServiceDialogState();
-}
-
-class _ServiceDialogState extends State<_ServiceDialog> {
-  final name = TextEditingController(),
-      price = TextEditingController(),
-      desc = TextEditingController();
-  String type = 'quote';
-  @override
-  void dispose() {
-    name.dispose();
-    price.dispose();
-    desc.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext c) => AlertDialog(
-    title: const Text('Nouveau service'),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextField(
-          controller: name,
-          decoration: const InputDecoration(labelText: 'Nom'),
-        ),
-        TextField(
-          controller: desc,
-          decoration: const InputDecoration(labelText: 'Description'),
-        ),
-        DropdownButtonFormField(
-          value: type,
-          items: const [
-            DropdownMenuItem(value: 'quote', child: Text('Sur devis')),
-            DropdownMenuItem(value: 'fixed', child: Text('Prix fixe')),
-            DropdownMenuItem(
-              value: 'starting_from',
-              child: Text('À partir de'),
-            ),
-          ],
-          onChanged: (v) {
-            if (v != null) setState(() => type = v);
-          },
-        ),
-        TextField(
-          controller: price,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Prix'),
-        ),
-      ],
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(c),
-        child: const Text('Annuler'),
-      ),
-      FilledButton(
-        onPressed: () async {
-          if (name.text.trim().isEmpty) return;
-          await Supabase.instance.client.from('services').insert({
-            'business_id': await AppSession().businessId(),
-            'name': name.text.trim(),
-            'description': desc.text.trim(),
-            'price_type': type,
-            'base_price': double.tryParse(price.text),
-          });
-          if (c.mounted) Navigator.pop(c, true);
-        },
-        child: const Text('Créer'),
-      ),
-    ],
-  );
+class _ServiceDialog extends StatefulWidget{const _ServiceDialog({this.service});final Map<String,dynamic>? service;@override State<_ServiceDialog> createState()=>_ServiceDialogState();}
+class _ServiceDialogState extends State<_ServiceDialog>{final name=TextEditingController(),price=TextEditingController(),desc=TextEditingController();final media=MediaService();String type='quote';XFile? image;bool loading=false;bool get editing=>widget.service!=null;@override void initState(){super.initState();final s=widget.service;if(s!=null){name.text=s['name']??'';price.text='${s['base_price']??''}';desc.text=s['description']??'';type=s['price_type']??'quote';}}@override void dispose(){name.dispose();price.dispose();desc.dispose();super.dispose();}
+@override Widget build(BuildContext c)=>AlertDialog(title:Text(editing?'Modifier le service':'Nouveau service'),content:SingleChildScrollView(child:SizedBox(width:420,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[InkWell(onTap:()async{final x=await media.pickImage();if(x!=null)setState(()=>image=x);},child:Container(width:double.infinity,height:140,decoration:BoxDecoration(color:Theme.of(c).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(16)),child:image==null?const Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.add_a_photo_outlined,size:34),SizedBox(height:7),Text('Ajouter / remplacer la photo')]):FutureBuilder(future:image!.readAsBytes(),builder:(_,s)=>s.hasData?Image.memory(s.data!,fit:BoxFit.cover):const Center(child:CircularProgressIndicator())))),const SizedBox(height:12),TextField(controller:name,decoration:const InputDecoration(labelText:'Nom du service')),const SizedBox(height:8),TextField(controller:desc,maxLines:3,decoration:const InputDecoration(labelText:'Description')),const SizedBox(height:8),DropdownButtonFormField<String>(value:type,items:const[DropdownMenuItem(value:'quote',child:Text('Sur devis')),DropdownMenuItem(value:'fixed',child:Text('Prix fixe')),DropdownMenuItem(value:'starting_from',child:Text('À partir de'))],onChanged:(v){if(v!=null)setState(()=>type=v);}),const SizedBox(height:8),TextField(controller:price,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Prix'))]))),actions:[TextButton(onPressed:loading?null:()=>Navigator.pop(c),child:const Text('Annuler')),FilledButton(onPressed:loading?null:_save,child:loading?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):Text(editing?'Enregistrer':'Créer'))]);
+Future<void> _save()async{if(name.text.trim().isEmpty)return;setState(()=>loading=true);try{final db=Supabase.instance.client;final price=double.tryParse(priceController);if(editing){await db.from('services').update({'name':name.text.trim(),'description':desc.text.trim(),'price_type':type,'base_price':price}).eq('id',widget.service!['id']);if(image!=null)await media.uploadServiceImage(serviceId:widget.service!['id'],file:image!);}else{final id=await AppSession().businessId();final service=await db.from('services').insert({'business_id':id,'name':name.text.trim(),'description':desc.text.trim(),'price_type':type,'base_price':price}).select('id').single();if(image!=null)await media.uploadServiceImage(serviceId:service['id'],file:image!);}if(mounted)Navigator.pop(context,true);}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Impossible : $e')));}finally{if(mounted)setState(()=>loading=false);}}
+String get priceController=>price.text.replaceAll(' ','').replaceAll(',','.');
 }

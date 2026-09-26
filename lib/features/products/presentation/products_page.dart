@@ -1,162 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/media/media_service.dart';
 import '../../../core/session/app_session.dart';
 
-class ProductsPage extends StatefulWidget {
-  const ProductsPage({super.key});
-  @override
-  State<ProductsPage> createState() => _ProductsPageState();
+class ProductsPage extends StatefulWidget { const ProductsPage({super.key}); @override State<ProductsPage> createState()=>_ProductsPageState(); }
+class _ProductsPageState extends State<ProductsPage>{
+  final db=Supabase.instance.client; late Future<List<Map<String,dynamic>>> future;
+  @override void initState(){super.initState();future=_list();}
+  Future<List<Map<String,dynamic>>> _list()async{final id=await AppSession().businessId();final x=await db.from('products').select('*, product_images(storage_path)').eq('business_id',id).order('created_at',ascending:false);return List<Map<String,dynamic>>.from(x);}
+  void refresh()=>setState(()=>future=_list());
+  Future<void> edit(Map<String,dynamic> p)async{final ok=await showDialog<bool>(context:context,builder:(_)=>_ProductDialog(product:p));if(ok==true)refresh();}
+  Future<void> remove(Map<String,dynamic> p)async{final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(title:const Text('Supprimer le produit ?'),content:Text('« ${p['name']} » sera retiré du catalogue.'),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Annuler')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Supprimer'))]));if(ok==true){await db.from('products').update({'status':'archived'}).eq('id',p['id']);refresh();}}
+  @override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('Produits'),actions:[IconButton(onPressed:()=>showDialog<bool>(context:context,builder:(_)=>const _ProductDialog()).then((v){if(v==true)refresh();}),icon:const Icon(Icons.add))]),body:FutureBuilder<List<Map<String,dynamic>>>(future:future,builder:(c,s){if(!s.hasData)return const Center(child:CircularProgressIndicator());final list=s.data!;if(list.isEmpty)return const Center(child:Text('Aucun produit.'));return ListView.separated(padding:const EdgeInsets.all(16),itemCount:list.length,separatorBuilder:(_,__)=>const SizedBox(height:8),itemBuilder:(_,i){final p=list[i];final images=List<Map<String,dynamic>>.from(p['product_images']??const []);final path=images.isEmpty?null:images.first['storage_path']?.toString();final url=path==null?null:db.storage.from('apnbf-media').getPublicUrl(path);return Card(child:ListTile(contentPadding:const EdgeInsets.all(10),leading:ClipRRect(borderRadius:BorderRadius.circular(10),child:url==null?Container(width:58,height:58,color:Theme.of(c).colorScheme.primaryContainer,child:const Icon(Icons.inventory_2_outlined)):Image.network(url,width:58,height:58,fit:BoxFit.cover)),title:Text(p['name']??'',style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text('${p['price']} F • Stock : ${p['quantity']}'),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='edit')edit(p);if(v=='delete')remove(p);},itemBuilder:(_)=>const[PopupMenuItem(value:'edit',child:Text('Modifier')),PopupMenuItem(value:'delete',child:Text('Archiver'))]));});}),floatingActionButton:FloatingActionButton.extended(onPressed:()=>showDialog<bool>(context:context,builder:(_)=>const _ProductDialog()).then((v){if(v==true)refresh();}),icon:const Icon(Icons.add),label:const Text('Produit')));}
 }
-
-class _ProductsPageState extends State<ProductsPage> {
-  final db = Supabase.instance.client;
-  final session = AppSession();
-  late Future<List<Map<String, dynamic>>> future;
-  @override
-  void initState() {
-    super.initState();
-    future = _list();
-  }
-
-  Future<List<Map<String, dynamic>>> _list() async {
-    final id = await session.businessId();
-    final x = await db
-        .from('products')
-        .select()
-        .eq('business_id', id)
-        .order('created_at', ascending: false);
-    return List<Map<String, dynamic>>.from(x);
-  }
-
-  void refresh() => setState(() => future = _list());
-  Future<void> add() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => const _ProductDialog(),
-    );
-    if (ok == true) refresh();
-  }
-
-  @override
-  Widget build(BuildContext c) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Produits'),
-      actions: [IconButton(onPressed: add, icon: const Icon(Icons.add))],
-    ),
-    body: FutureBuilder<List<Map<String, dynamic>>>(
-      future: future,
-      builder: (c, s) {
-        if (!s.hasData) return const Center(child: CircularProgressIndicator());
-        final list = s.data!;
-        if (list.isEmpty) return const Center(child: Text('Aucun produit.'));
-        return ListView.builder(
-          itemCount: list.length,
-          itemBuilder: (_, i) {
-            final p = list[i];
-            return Card(
-              child: ListTile(
-                leading: const Icon(Icons.inventory_2_outlined),
-                title: Text(p['name']),
-                subtitle: Text('${p['price']} F • Stock : ${p['quantity']}'),
-                trailing: Text(p['status'] ?? ''),
-              ),
-            );
-          },
-        );
-      },
-    ),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: add,
-      icon: const Icon(Icons.add),
-      label: const Text('Produit'),
-    ),
-  );
-}
-
-class _ProductDialog extends StatefulWidget {
-  const _ProductDialog();
-  @override
-  State<_ProductDialog> createState() => _ProductDialogState();
-}
-
-class _ProductDialogState extends State<_ProductDialog> {
-  final name = TextEditingController(),
-      price = TextEditingController(),
-      qty = TextEditingController(),
-      desc = TextEditingController();
-  bool loading = false;
-  @override
-  void dispose() {
-    name.dispose();
-    price.dispose();
-    qty.dispose();
-    desc.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext c) => AlertDialog(
-    title: const Text('Nouveau produit'),
-    content: SingleChildScrollView(
-      child: Column(
-        children: [
-          TextField(
-            controller: name,
-            decoration: const InputDecoration(labelText: 'Nom'),
-          ),
-          TextField(
-            controller: price,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Prix de vente (F)'),
-          ),
-          TextField(
-            controller: qty,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Quantité'),
-          ),
-          TextField(
-            controller: desc,
-            decoration: const InputDecoration(labelText: 'Description'),
-          ),
-        ],
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(c),
-        child: const Text('Annuler'),
-      ),
-      FilledButton(
-        onPressed: loading
-            ? null
-            : () async {
-                final p = double.tryParse(price.text) ?? 0,
-                    q = double.tryParse(qty.text) ?? 0;
-                if (name.text.trim().isEmpty) return;
-                setState(() => loading = true);
-                try {
-                  final id = await AppSession().businessId();
-                  await Supabase.instance.client.from('products').insert({
-                    'business_id': id,
-                    'name': name.text.trim(),
-                    'price': p,
-                    'quantity': q,
-                    'description': desc.text.trim(),
-                    'status': q > 0 ? 'available' : 'draft',
-                    'condition': 'used',
-                  });
-                  if (c.mounted) Navigator.pop(c, true);
-                } catch (e) {
-                  if (c.mounted)
-                    ScaffoldMessenger.of(
-                      c,
-                    ).showSnackBar(SnackBar(content: Text('$e')));
-                } finally {
-                  if (mounted) setState(() => loading = false);
-                }
-              },
-        child: const Text('Créer'),
-      ),
-    ],
-  );
+class _ProductDialog extends StatefulWidget{const _ProductDialog({this.product});final Map<String,dynamic>? product;@override State<_ProductDialog> createState()=>_ProductDialogState();}
+class _ProductDialogState extends State<_ProductDialog>{final name=TextEditingController(),price=TextEditingController(),qty=TextEditingController(),desc=TextEditingController();final media=MediaService();XFile? image;bool loading=false;bool get editing=>widget.product!=null;@override void initState(){super.initState();final p=widget.product;if(p!=null){name.text=p['name']??'';price.text='${p['price']??''}';qty.text='${p['quantity']??''}';desc.text=p['description']??'';}}@override void dispose(){name.dispose();price.dispose();qty.dispose();desc.dispose();super.dispose();}
+@override Widget build(BuildContext c)=>AlertDialog(title:Text(editing?'Modifier le produit':'Nouveau produit'),content:SingleChildScrollView(child:SizedBox(width:420,child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[InkWell(onTap:()async{final x=await media.pickImage();if(x!=null)setState(()=>image=x);},child:Container(width:double.infinity,height:140,decoration:BoxDecoration(color:Theme.of(c).colorScheme.surfaceContainerHighest,borderRadius:BorderRadius.circular(16)),child:image==null?const Column(mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.add_a_photo_outlined,size:34),SizedBox(height:7),Text('Ajouter / remplacer la photo')]):FutureBuilder(future:image!.readAsBytes(),builder:(_,s)=>s.hasData?Image.memory(s.data!,fit:BoxFit.cover):const Center(child:CircularProgressIndicator())))),const SizedBox(height:12),TextField(controller:name,decoration:const InputDecoration(labelText:'Nom du produit')),const SizedBox(height:8),TextField(controller:price,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Prix de vente (F CFA)')),const SizedBox(height:8),TextField(controller:qty,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Stock')),const SizedBox(height:8),TextField(controller:desc,maxLines:3,decoration:const InputDecoration(labelText:'Description'))]))),actions:[TextButton(onPressed:loading?null:()=>Navigator.pop(c),child:const Text('Annuler')),FilledButton(onPressed:loading?null:_save,child:loading?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):Text(editing?'Enregistrer':'Créer'))]);
+Future<void> _save()async{final p=double.tryParse(price.text.replaceAll(' ','').replaceAll(',','.'))??0,q=double.tryParse(qty.text.replaceAll(' ','').replaceAll(',','.'))??0;if(name.text.trim().isEmpty||p<0||q<0)return;setState(()=>loading=true);try{final db=Supabase.instance.client;if(editing){await db.from('products').update({'name':name.text.trim(),'price':p,'quantity':q,'description':desc.text.trim(),'status':q>0?'available':'draft'}).eq('id',widget.product!['id']);if(image!=null)await media.uploadProductImage(productId:widget.product!['id'],file:image!);}else{final id=await AppSession().businessId();final product=await db.from('products').insert({'business_id':id,'name':name.text.trim(),'price':p,'quantity':q,'description':desc.text.trim(),'status':q>0?'available':'draft','condition':'used'}).select('id').single();if(image!=null)await media.uploadProductImage(productId:product['id'],file:image!);}if(mounted)Navigator.pop(context,true);}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Impossible : $e')));}finally{if(mounted)setState(()=>loading=false);}}
 }
